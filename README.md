@@ -1,5 +1,3 @@
-# ISE435-Project
-
 ## ISE435, F2020: Final Project
 
 ## Overview
