@@ -7,7 +7,10 @@ Created on Sun Nov  8 19:50:30 2020
 
 #%% Creates a dataframe from expenses data 
 
-import zipfile as zp, pandas as pd, matplotlib.pyplot as plt, datetime as dt
+import zipfile as zp, pandas as pd, datetime as dt
+# from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+# import matplotlib
+# matplotlib.use('TKAgg')
 
 path = 'Expenses.zip' # expenses are stored by year in a zip file 
 zipfile = zp.ZipFile(path, 'r')
@@ -21,6 +24,8 @@ for file in files:
         allDF = pd.concat([allDF, yearDF], axis=0, ignore_index=True, sort=False) # adds individual csv to df containing all data
 
 allDF['Expense'] = allDF['Expense'].replace('[$,]', '', regex=True).astype(float) # converts data in 'Expense' column from string to float 
+yearList = allDF['Date'].dt.year.unique().tolist() # creates a list of unique years in the df 
+yearList = [str(i) for i in yearList] # converts each year from datetime to string 
 
 #%% Function - finds the monthly expenses for a given year 
 
@@ -56,8 +61,8 @@ def catYear(y): # 'yr' is the year to be analyzed
 
 #%% Function - graphs the monthly data for a given year 
 
-def plotData(monthly, y): # 'data' should be the list of monthly expenses, 'yr' is the year of the monthly list
-
+def plotData(monthly, y): # 'data' should be the list of monthly expenses, 'yr' is the year of the monthly list 
+    
     months = {1:'Jan' , 2:'Feb' , 3:'Mar' , 4:'Apr', 5:'May' , 6:'Jun' ,
               7:'Jul' , 8:'Aug' , 9:'Sep' , 10:'Oct' , 11:'Nov' , 12:'Dec'}
 
@@ -70,41 +75,58 @@ def plotData(monthly, y): # 'data' should be the list of monthly expenses, 'yr' 
     plt.ylabel('Amount Spent ($)')
     plt.grid(True)
     plt.xticks(rotation=45)
-    plt.show()
+    plt.tight_layout()
+    plt.close()
     
     return dataGraph
+#%% Function - creates a canvas (allows figure to be inserted directly into PySimpleGUI)
+
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import matplotlib
+matplotlib.use('TKAgg')
+
+def draw_figure(canvas, figure):
+    figure_canvas_agg = FigureCanvasTkAgg(figure, canvas)
+    figure_canvas_agg.draw()
+    figure_canvas_agg.get_tk_widget().pack(side='top', fill='both', expand=1)
+    return figure_canvas_agg
 
 #%% PySimpleGUI
 
-options = ('2017', '2018', '2019', '2020', 'All')
+yearList.append('All') # adds 'All' option to selection menu
+options = tuple(yearList) # converts list to tuple (PySimpleGUI commands use tuples, not lists)
 
 import PySimpleGUI as sg
+import matplotlib.pyplot as plt
 
 sg.theme('SystemDefaultForReal')
 
 layout = [[sg.Text('Choose an Option:\t'), sg.Combo(options, size=(10,1)), sg.Button('Analyze'), sg.Button('Cancel')],
-          [sg.Text('Total'), sg.Text(key='Total', relief='sunken', size=(10,1), background_color='white'), sg.Text('Top Categories'), sg.Multiline(key='Top', size=(12,3), background_color='white')]]
+          [sg.Frame(title='Analysis', layout=[
+              [sg.Text('Total'), sg.Text(key='Total', relief='sunken', size=(10,1), background_color='white', justification='c'), sg.Text('Top Categories'), sg.Multiline(key='Top', size=(12,3), background_color='white', justification='c')]])],
+          [sg.Canvas(key='Canvas')]]
 
-window = sg.Window('Expenses Analysis Tool', layout)
+window = sg.Window('Expenses Analysis Tool', layout, element_justification='c')
 
 while True:  # Event Loop
     event, values = window.read()
-    print(event, values)
+    # print(event, values)
     if event == sg.WIN_CLOSED or event == 'Cancel':
         break
     if event == 'Analyze' and event != '':
         if values[0] in ['2017', '2018', '2019', '2020']:
             y = int(values[0])
             
-            monthly = byMonth(y)
-            total = byYear(y)
-            topCat = catYear(y)
+            monthly, total, topCat = byMonth(y), byYear(y), catYear(y)
+            # total = byYear(y)
+            # topCat = catYear(y)
             
             window['Total'].update(total)
             window['Top'].update(topCat)
             
             fig1 = plotData(monthly, y)
             
+            figCanvas = draw_figure(window['Canvas'].TKCanvas, fig1)
         else: 
             total = allDF['Expense'].sum().round(2) # total expenses over all years 
             topCat = allDF['Category'].value_counts().head(3)
@@ -112,7 +134,7 @@ while True:  # Event Loop
             window['Total'].update(total)
             window['Top'].update(topCat)
             
-            ################ GRAPHING #################\
+            ################ GRAPHING #################
                 
             months = {1:'Jan' , 2:'Feb' , 3:'Mar' , 4:'Apr', 5:'May' , 6:'Jun' ,
                       7:'Jul' , 8:'Aug' , 9:'Sep' , 10:'Oct' , 11:'Nov' , 12:'Dec'}
@@ -124,7 +146,7 @@ while True:  # Event Loop
             monthly2019 = byMonth(int('2019'))
             monthly2020 = byMonth(int('2020'))
             
-            plt.figure()
+            fig1 = plt.figure()
             plt.bar(listMonths, monthly2017)
             plt.bar(listMonths, monthly2018, bottom=monthly2017) 
             plt.bar(listMonths, monthly2019, bottom=[i + j for i, j in zip(monthly2017, monthly2018)]) # combines data frome 2017 and 2018
@@ -135,5 +157,9 @@ while True:  # Event Loop
             plt.grid(True)
             plt.xticks(rotation=45)
             plt.legend([2017, 2018, 2019, 2020])
+            plt.tight_layout()
+            plt.close()
+            
+            figCanvas = draw_figure(window['Canvas'].TKCanvas, fig1)
             
 window.close()
