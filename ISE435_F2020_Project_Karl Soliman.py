@@ -4,10 +4,21 @@ Created on Sun Nov  8 19:50:30 2020
 
 @author: Karl Angelo Soliman
 """
+#%% Packages Used 
 
-#%% Function - finds the monthly expenses for a given year 
+import zipfile as zp
+import pandas as pd
+import numpy as np 
+import PySimpleGUI as sg
 
-def byMonth(y): # 'yr' is the year to be analyzed
+import matplotlib 
+matplotlib.use('TKAgg')
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg 
+import matplotlib.pyplot as plt 
+
+#%% Functions
+
+def byMonth(allDF, y): # finds the monthly expenses for a given year (input: dataframe, specific year)
     
     months = {1:'Jan' , 2:'Feb' , 3:'Mar' , 4:'Apr', 5:'May' , 6:'Jun' ,
               7:'Jul' , 8:'Aug' , 9:'Sep' , 10:'Oct' , 11:'Nov' , 12:'Dec'}
@@ -18,50 +29,37 @@ def byMonth(y): # 'yr' is the year to be analyzed
     for k in months:
         monthlyDF = yearly[yearly['Date'].dt.month == k]
         monthly.append(monthlyDF['Expense'].sum().round(2))
-    
     return monthly
 
-#%% Function - finds the monthly expenses for a given year 
-
-def byYear(y): # 'yr' is the year to be analyzed
+def byYear(allDF, y): # finds the total expenses for a given year (input: dataframe containing all data..., specific year)
     yearly = allDF[allDF['Date'].dt.year == y]
     total = yearly['Expense'].sum().round(2)
-    
+    total = '${:,.2f}'.format(total)
     return total
 
-#%% Function - finds the monthly expenses for a given year 
-
-def catYear(y): # 'yr' is the year to be analyzed
+def catYear(allDF, y): # finds the top three categories for a given year (inputs: dataframe containing all data..., specific year)
     yearly = allDF[allDF['Date'].dt.year == y]
     topCats = yearly['Category'].value_counts().head(3)
     
     return topCats.to_string()
 
-#%% Function - graphs the monthly data for a given year 
-
-import matplotlib.pyplot as plt
-
-def plotData(monthly, y): # 'data' should be the list of monthly expenses, 'yr' is the year of the monthly list 
-    
+def plotData(monthly, y): # creates a bar chart of the monthly data for a given year (inputs: monthly expenses for a year, specific year)
     months = {1:'Jan' , 2:'Feb' , 3:'Mar' , 4:'Apr', 5:'May' , 6:'Jun' ,
               7:'Jul' , 8:'Aug' , 9:'Sep' , 10:'Oct' , 11:'Nov' , 12:'Dec'}
 
     listMonths = [months[k] for k in months]
     
     dataGraph = plt.figure()
-    plt.bar(listMonths, monthly)
+    plt.bar(listMonths, monthly, color='orange')
+    plt.plot(monthly, color='blue')
     plt.title(f'Monthly Expenses in {y}') ; plt.xlabel('Month') ; plt.ylabel('Amount Spent ($)')
+    plt.ylim([0, 300]) # implements a constant y-axis scale for easier comparison between years; change if monthly expenses exceed limit 
     plt.grid(True) ; plt.xticks(rotation=45) ; plt.tight_layout()
     plt.close()
     
     return dataGraph
 
-#%% Function - creates a stacked bar chart with yearly data
-
-import numpy as np 
-import matplotlib.pyplot as plt
-
-def plotAll(allDF): 
+def plotAll(allDF): # creates a stacked bar chart of the monthly data for all years (input: dataframe containing data from all years)
     yearList = allDF['Date'].dt.year.unique().tolist() # creates a list of unique years in the df 
     yearList = [str(i) for i in yearList] # converts each year from datetime to string 
         
@@ -69,40 +67,31 @@ def plotAll(allDF):
               7:'Jul' , 8:'Aug' , 9:'Sep' , 10:'Oct' , 11:'Nov' , 12:'Dec'}
                 
     listMonths = [months[k] for k in months]
-    monthlyData = [byMonth(int(y)) for y in yearList]
-    monthlyData = np.array(monthlyData).sum(axis=0)
+    
+    monthlyData = [byMonth(allDF, int(y)) for y in yearList] # stores list of monthly expenses for each year in a list containing data for all years
+    monthlyData = np.array(monthlyData).sum(axis=0) # adds the expenses of each month to find expenses of each month for all years 
         
     fig1 = plt.figure()
-    plt.bar(x=listMonths, height=monthlyData)
+    plt.bar(x=listMonths, height=monthlyData, color='orange')
+    plt.plot(monthlyData, color='blue')
     plt.title('Monthly Expenses over All Years') ; plt.xlabel('Month') ; plt.ylabel('Amount Spent ($)')
     plt.grid(True) ; plt.xticks(rotation=45) ; plt.tight_layout()
     plt.close()
     
     return fig1
-            
-#%% Function - creates a canvas (allows figure to be inserted directly into PySimpleGUI)
-
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-import matplotlib ; matplotlib.use('TKAgg')
     
-def draw_figure(canvas, figure):
+def draw_figure(canvas, figure): # creates a canvas of a graph/chart through tkinter (allows figure to be inserted directly into PySimpleGUI)
     figure_canvas_agg = FigureCanvasTkAgg(figure, canvas)
     figure_canvas_agg.draw()
     figure_canvas_agg.get_tk_widget().pack(side='top', fill='both', expand=1)
     
     return figure_canvas_agg
 
-#%% Function - deletes existing canvas (prevents stacking in the window)
-
-import matplotlib ; matplotlib.use('TKAgg')
-    
-def delete_figure_agg(figure_agg):
+def delete_figure_agg(figure_agg): # deletes existing canvas (prevents stacking of charts in the window for subsequent analyses)
     figure_agg.get_tk_widget().forget()
     plt.close('all')
     
 #%% Creates a dataframe from expenses data 
-
-import zipfile as zp, pandas as pd # , datetime as dt
 
 path = 'Expenses.zip' # expenses are stored by year in a zip file 
 zipfile = zp.ZipFile(path, 'r')
@@ -121,59 +110,56 @@ yearList = [str(i) for i in yearList] # converts each year from datetime to stri
 
 #%% PySimpleGUI
 
-import PySimpleGUI as sg
-
-yearList.append('All') # adds 'All' option to selection menu
+yearList.append('All Years') # adds 'All' option to selection menu
 options = tuple(yearList) # converts list to tuple (PySimpleGUI commands use tuples, not lists)
 
-sg.theme('SystemDefaultForReal')
+sg.theme('SystemDefaultForReal') # sets GUI theme to Windows default colors 
 
 layout = [[sg.Text('Choose an Option:\t'), sg.Combo(options, size=(10,1), default_value=options[-1]), sg.Button('Analyze'), sg.Button('Reset', disabled=True)],
-          [sg.Frame(title='Analysis', element_justification='c', layout=[
-              [sg.Text('Currently Selected:'), sg.Text(key='Current', size=(10,1), relief='solid', background_color='white', justification='c')],
-              [sg.Text('Total'), sg.Text(key='Total', relief='sunken', size=(10,1), background_color='white', justification='c'), sg.Text('Top Categories'), sg.Multiline(key='Top', size=(12,3), background_color='white', justification='c')]])],
+          [sg.Frame(title='Output', element_justification='c', layout=[
+              [sg.Text('Data Analyzed:'), sg.Text(key='Current', size=(10,1), relief='solid', background_color='white', justification='c')],
+              [sg.Text('Total:'), sg.Text(key='Total', relief='sunken', size=(10,1), background_color='white', justification='c'), sg.Text('Top Categories:'), sg.Multiline(key='Top', size=(12,3), background_color='white', justification='c')]])],
           [sg.Frame(title='Chart', element_justification='c', layout=[[sg.Canvas(key='Canvas', size=(650,475), background_color='white')]])]]
 
 window = sg.Window('Expenses Analysis Tool', layout, element_justification='c')
 window.Finalize()
 
 while True:  # Event Loop
-    event, values = window.read()
-    
-    if event == sg.WIN_CLOSED:
+    event, values = window.read() # stores user inputs from window
+    if event == sg.WIN_CLOSED: # closes the window when 'x' is pressed
         break
     
-    if event == 'Analyze':
-        window.FindElement('Analyze').update(disabled=True)
-        window.FindElement('Reset').update(disabled=False)
-        window.FindElement('Canvas').unhide_row()
+    if event == 'Analyze': # if user presses the 'Analyze' button...
+        window.FindElement('Analyze').update(disabled=True) # disables the 'Analyze' button until the window is reset
+        window.FindElement('Reset').update(disabled=False) # enables the 'Reset' button 
         
-        if values[0] in options[0:-1]:
-            y = int(values[0])
-            monthly = byMonth(y)
-            total = byYear(y)
-            topCat = catYear(y)
-            window.FindElement('Current').update(y)
-            window['Total'].update(total)
-            window['Top'].update(topCat)
-            fig1 = plotData(monthly, y)
-            figCanvas = draw_figure(window['Canvas'].TKCanvas, fig1)
+        if values[0] in options[0:-1]: # if user selects a year from the combobox...
+            y = int(values[0]) # gets the value of the year selected 
+            monthly = byMonth(allDF, y) # calls function to find monthly data for that year
+            total = byYear(allDF, y) # calls function to find total expenses for that year
+            topCat = catYear(allDF, y) # calls function to find the top 3 categories for that year
+            window.FindElement('Current').update(y) # displays year selected 
+            window['Total'].update(total) # displays total expenses
+            window['Top'].update(topCat) # displays top 3 categories
+            fig1 = plotData(monthly, y) # calls function to plot monthly data for that year 
+            figCanvas = draw_figure(window['Canvas'].TKCanvas, fig1) # calls function to add plot to the canvas 
             
-        else: 
-            window.FindElement('Current').update('All')
-            total = allDF['Expense'].sum().round(2) # total expenses over all years 
+        else: # if user selects 'All' from the combobox...
+            total = allDF['Expense'].sum().round(2) # finds the total expenses over all years 
+            total = '${:,.2f}'.format(total) # formats total into currency ($##,###.##)
             topCat = allDF['Category'].value_counts().head(3).to_string() # top three categories over all years         
-            window['Total'].update(total)
-            window['Top'].update(topCat)            
-            fig1 = plotAll(allDF)
-            figCanvas = draw_figure(window['Canvas'].TKCanvas, fig1)   
+            window.FindElement('Current').update(values[0]) # displays current selection 
+            window['Total'].update(total) # displays total expenses
+            window['Top'].update(topCat) # displays top 3 categories
+            fig1 = plotAll(allDF) # calls function to monthly data for all years
+            figCanvas = draw_figure(window['Canvas'].TKCanvas, fig1) # calls function to add plot to the canvas   
             
-    if event == 'Reset':
-        window.FindElement('Analyze').update(disabled=False)
-        window.FindElement('Reset').update(disabled=True)
-        window['Current'].update('')
-        window['Total'].update('')
-        window['Top'].update('')       
-        delete_figure_agg(figCanvas)
+    if event == 'Reset': # if user presses 'Reset' button...
+        window.FindElement('Analyze').update(disabled=False) # re-enables 'Analyze' button
+        window.FindElement('Reset').update(disabled=True) # disables 'Reset' button until the next analysis
+        window['Current'].update('') # clears current selection display
+        window['Total'].update('') # clears total expenses display
+        window['Top'].update('') # clears top 3 categories display 
+        delete_figure_agg(figCanvas) # calls function to clear canvas
         
-window.close()
+window.close() # closes GUI
