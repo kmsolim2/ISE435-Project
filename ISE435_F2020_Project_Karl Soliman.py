@@ -19,10 +19,10 @@ import matplotlib.pyplot as plt
 #%% Functions
 
 def createAllDF(path): # unzips file, reads all .csv files, and creates a dataframe of all the data (input: filepath)
+    allDF = pd.DataFrame() # creates a dataframe to hold the data from all years
+    
     zipfile = zp.ZipFile(path, 'r')
     files = zipfile.namelist()
-    
-    allDF = pd.DataFrame() # creates a dataframe to hold the data from all years
     
     for file in files:
         if file.endswith('.csv'):
@@ -34,7 +34,7 @@ def createOptions(allDF): # finds the unique years within the dataframe to creat
     allDF['Expense'] = allDF['Expense'].replace('[$,]', '', regex=True).astype(float) # converts data in 'Expense' column from string to float 
     yearList = allDF['Date'].dt.year.unique().tolist() # creates a list of unique years in the df 
     yearList = [str(i) for i in yearList] # converts each year from datetime to string 
-    yearList.insert(0, 'All') # adds 'All' option to selection menu
+    yearList.insert(0, 'All') # adds 'All' option to the beginning of the selection menu
     options = tuple(yearList) # converts list to tuple (PySimpleGUI commands use tuples, not lists)
     return options
 
@@ -112,7 +112,8 @@ def delete_figure_agg(figure_agg): # deletes existing canvas (prevents stacking 
 sg.theme('SystemDefaultForReal') # sets GUI theme to Windows default colors 
 
 layout = [[sg.Frame(title='Selection', element_justification='l', layout=[
-              [sg.Text('File:'), sg.Input(key='File', size=(29,1)), sg.FileBrowse(key='Browse'), sg.Button('OK')],
+              [sg.Text('File:'), sg.Input(key='File', size=(29,1), enable_events=True), sg.FileBrowse(key='Browse'), sg.Button('OK', disabled=True)],
+              [sg.Text('Status:', size=(15,1), text_color='darkgray', justification='r'), sg.Text('Waiting for user input...', key='Status', size=(20,1), text_color='darkgray', justification='l')], # status shows last action completed
               [sg.Text('Choose an Option:\t'), sg.Combo(key='Options', values='', size=(12,1), disabled=True), sg.Button('Analyze', disabled=True), sg.Button('Reset', disabled=True)]])],
           [sg.Frame(title='Output', element_justification='c', layout=[
               [sg.Text('Data Analyzed:'), sg.Text(key='Current', size=(10,1), relief='solid', background_color='white', justification='c')],
@@ -128,20 +129,25 @@ while True:  # Event Loop
     if event == sg.WIN_CLOSED: # closes the window when 'x' is pressed
         break
     
-    if event == 'OK':
+    if event == 'File': # if use selects a file...
+        window.FindElement('OK').update(disabled=False) # enables 'OK' button to confirm selection
+        window.FindElement('Status').update('New file selected...') # updates current status
+        window.FindElement('Analyze').update(disabled=True) # disables the 'Analyze' button until file selection is confirmed (after reset)
+
+    if event == 'OK': # if user confirms file selection...
         allDF = createAllDF(values['File']) # calls function to open selected file and create a df containing all data
         options = createOptions(allDF) # calls function to create a list of available options for the combobox 
-        window.FindElement('Options').update(values=options) # adds options to the combobox 
-        window.FindElement('Options').update(set_to_index=0) # selects default option ('All' years)
-        window.FindElement('Options').update(disabled=False) # enables user to make a selection from the combobox 
+        window.FindElement('Status').update('New file opened...') # updates current status
+        window.FindElement('Options').update(values=options, set_to_index=0, disabled=False) # adds options to the combobox, selects default option ('All' years), nad enables user to make a selection from the combobox
         window.FindElement('Analyze').update(disabled=False) # enables 'Analyze' button
         
     if event == 'Analyze': # if user presses the 'Analyze' button...
-        window.FindElement('Analyze').update(disabled=True) # disables the 'Analyze' button until the window is reset
-        window.FindElement('Reset').update(disabled=False) # enables the 'Reset' button 
         window.FindElement('Browse').update(disabled=True) # disables 'OK' button/new file selection until the window is reset
         window.FindElement('OK').update(disabled=True) # disables 'OK' button/new file selection until the window is reset
-        
+        window.FindElement('Status').update('Analysis completed...') # updates current status
+        window.FindElement('Analyze').update(disabled=True) # disables the 'Analyze' button until the window is reset
+        window.FindElement('Reset').update(disabled=False) # enables the 'Reset' button 
+ 
         if values['Options'] in options[1:]: # if user selects a year from the combobox...
             y = int(values['Options']) # gets the value of the year selected 
             monthly = byMonth(allDF, y) # calls function to find monthly data for that year
@@ -164,11 +170,10 @@ while True:  # Event Loop
             figCanvas = draw_figure(window['Canvas'].TKCanvas, fig1) # calls function to add plot to the canvas   
             
     if event == 'Reset': # if user presses 'Reset' button...
-        window.FindElement('Options').update(set_to_index=0)
+        window.FindElement('Browse').update(disabled=False) # disables 'OK' button/new file selection until the window is reset  
+        window.FindElement('Status').update('Waiting for user input...') # updates current status
         window.FindElement('Analyze').update(disabled=False) # re-enables 'Analyze' button
-        window.FindElement('OK').update(disabled=False) # re-enables 'OK' button/new file selection
-        window.FindElement('Browse').update(disabled=False) # disables 'OK' button/new file selection until the window is reset
-        window.FindElement('OK').update(disabled=False) # disables 'OK' button/new file selection until the window is reset
+        window.FindElement('Reset').update(disabled=True) # disables 'Reset' button until new file is selected/new analysis is made
         window['Current'].update('') # clears current selection display
         window['Total'].update('') # clears total expenses display
         window['Top'].update('') # clears top 3 categories display 
