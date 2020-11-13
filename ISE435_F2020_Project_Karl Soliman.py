@@ -113,13 +113,14 @@ sg.theme('SystemDefaultForReal') # sets GUI theme to Windows default colors
 
 layout = [[sg.Frame(title='Selection', element_justification='l', layout=[
               [sg.Text('File:'), sg.Input(key='File', size=(29,1), enable_events=True), sg.FileBrowse(key='Browse'), sg.Button('OK', disabled=True)],
-              [sg.Text('Status:', size=(15,1), text_color='darkgray', justification='r'), sg.Text('Waiting for user input...', key='Status', size=(20,1), text_color='darkgray', justification='l')], # status shows last action completed
+              [sg.Text('Status   :', size=(16,1), text_color='darkgray', justification='r'), sg.Text('Waiting for user input...', key='Status', size=(20,1), text_color='darkgray', justification='l')], # status shows last action completed
               [sg.Text('Choose an Option:\t'), sg.Combo(key='Options', values='', size=(12,1), disabled=True), sg.Button('Analyze', disabled=True), sg.Button('Reset', disabled=True)]])],
           [sg.Frame(title='Output', element_justification='c', layout=[
               [sg.Text('Data Analyzed:'), sg.Text(key='Current', size=(10,1), relief='solid', background_color='white', justification='c')],
               [sg.Text('Total:'), sg.Text(key='Total', relief='sunken', size=(10,1), background_color='white', justification='c'), sg.Text('Top Categories:'), sg.Multiline(key='Top', size=(12,3), background_color='white', justification='c')]])],
           [sg.Frame(title='Chart', element_justification='c', layout=[[sg.Canvas(key='Canvas', size=(650,475), background_color='white')]])]]
 
+# tab1 = s[[sg.Canvas('Key')]]
 window = sg.Window('Expenses Analysis Tool', layout, element_justification='c')
 window.Finalize()
 
