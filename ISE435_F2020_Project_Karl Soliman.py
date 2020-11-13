@@ -113,7 +113,7 @@ sg.theme('SystemDefaultForReal') # sets GUI theme to Windows default colors
 
 layout = [[sg.Frame(title='Selection', element_justification='l', layout=[
               [sg.Text('File:'), sg.Input(key='File', size=(29,1), enable_events=True), sg.FileBrowse(key='Browse'), sg.Button('OK', disabled=True)],
-              [sg.Text('Status:', size=(15,1), text_color='darkgray', justification='r'), sg.Text('Waiting for user input...', key='Status', size=(20,1), text_color='darkgray', justification='l')], # status shows last action completed
+              [sg.Text('Status   :', size=(16,1), text_color='darkgray', justification='r'), sg.Text('Waiting for user input...', key='Status', size=(20,1), text_color='darkgray', justification='l')], # status shows last action completed
               [sg.Text('Choose an Option:\t'), sg.Combo(key='Options', values='', size=(12,1), disabled=True), sg.Button('Analyze', disabled=True), sg.Button('Reset', disabled=True)]])],
           [sg.Frame(title='Output', element_justification='c', layout=[
               [sg.Text('Data Analyzed:'), sg.Text(key='Current', size=(10,1), relief='solid', background_color='white', justification='c')],
